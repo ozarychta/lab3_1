@@ -21,6 +21,7 @@ import static org.mockito.Mockito.*;
 public class BookKeeperTest {
 
     BookKeeper bookKeeper;
+    InvoiceRequest invoiceRequest0;
     InvoiceRequest invoiceRequest1;
     InvoiceRequest invoiceRequest2;
 
@@ -41,6 +42,8 @@ public class BookKeeperTest {
         RequestItem item1 = new RequestItem(productData,10, new Money(new BigDecimal(100)));
         RequestItem item2 = new RequestItem(productData,20, new Money(new BigDecimal(200)));
 
+        invoiceRequest0 = new InvoiceRequest(clientData);
+
         invoiceRequest1 = new InvoiceRequest(clientData);
         invoiceRequest1.add(item1);
 
@@ -59,8 +62,33 @@ public class BookKeeperTest {
     }
 
     @Test
-    public void issuance_invoiceRequestWithTwoItems_shouldInvokeCalculateTaxTwoTimes() {
+    public void issuance_invoiceRequestWithOneItem_shouldInvokeCalculateTaxOneTime() {
         Invoice invoice = bookKeeper.issuance(invoiceRequest1,taxPolicy);
         verify(taxPolicy, times(1)).calculateTax(any(ProductType.class), any(Money.class));
     }
+
+    @Test
+    public void issuance_invoiceRequestWithTwoItems_shouldReturnInvoiceWithTwoInvoiceLines() {
+        Invoice invoice = bookKeeper.issuance(invoiceRequest2,taxPolicy);
+        assertThat(invoice.getItems().size(), is(2));
+    }
+
+    @Test
+    public void issuance_invoiceRequestWithTwoItems_shouldInvokeCalculateTaxTwoTimes() {
+        Invoice invoice = bookKeeper.issuance(invoiceRequest2,taxPolicy);
+        verify(taxPolicy, times(2)).calculateTax(any(ProductType.class), any(Money.class));
+    }
+
+    @Test
+    public void issuance_invoiceRequestWithZeroItems_shouldReturnInvoiceWithNoInvoiceLine() {
+        Invoice invoice = bookKeeper.issuance(invoiceRequest0,taxPolicy);
+        assertThat(invoice.getItems().size(), is(0));
+    }
+
+    @Test
+    public void issuance_invoiceRequestWithZeroItems_shouldInvokeCalculateTaxZeroTimes() {
+        Invoice invoice = bookKeeper.issuance(invoiceRequest0,taxPolicy);
+        verify(taxPolicy, times(0)).calculateTax(any(ProductType.class), any(Money.class));
+    }
+
 }
