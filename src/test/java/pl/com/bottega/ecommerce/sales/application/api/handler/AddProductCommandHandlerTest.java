@@ -2,9 +2,9 @@ package pl.com.bottega.ecommerce.sales.application.api.handler;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-import pl.com.bottega.ecommerce.canonicalmodel.publishedlanguage.ClientData;
 import pl.com.bottega.ecommerce.canonicalmodel.publishedlanguage.Id;
 import pl.com.bottega.ecommerce.sales.application.api.command.AddProductCommand;
 import pl.com.bottega.ecommerce.sales.domain.client.Client;
@@ -17,8 +17,9 @@ import pl.com.bottega.ecommerce.sales.domain.reservation.ReservationRepository;
 import pl.com.bottega.ecommerce.system.application.SystemContext;
 import pl.com.bottega.ecommerce.system.application.SystemUser;
 
-import java.util.Date;
-
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.not;
+import static org.junit.Assert.assertThat;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.*;
 
@@ -27,6 +28,7 @@ public class AddProductCommandHandlerTest {
     AddProductCommandHandler addProductCommandHandler;
     AddProductCommand addProductCommand;
     Client client;
+    ArgumentCaptor valueCapture;
 
     @Mock
     ReservationRepository reservationRepository;
@@ -62,8 +64,6 @@ public class AddProductCommandHandlerTest {
 
         addProductCommand = new AddProductCommand(Id.generate(), Id.generate(), 10);
 
-        ClientData clientData = new ClientData(Id.generate(), "client");
-//        Reservation reservation = new Reservation(Id.generate(), Reservation.ReservationStatus.OPENED, clientData, new Date());
         when(reservationRepository.load(any(Id.class))).thenReturn(reservation);
 
         when(availableProduct.isAvailable()).thenReturn(true);
@@ -79,7 +79,9 @@ public class AddProductCommandHandlerTest {
         when(suggestionService.suggestEquivalent(any(Product.class), any(Client.class))).thenReturn(new Product());
 
         doNothing().when(reservationRepository).save(any(Reservation.class));
-        doNothing().when(reservation).add(any(Product.class), anyInt());
+
+        valueCapture = ArgumentCaptor.forClass(Product.class);
+        doNothing().when(reservation).add((Product) valueCapture.capture(), anyInt());
 
     }
 
@@ -95,5 +97,19 @@ public class AddProductCommandHandlerTest {
 
         addProductCommandHandler.handle(addProductCommand);
         verify(suggestionService, times(1)).suggestEquivalent(unavailableProduct, client);
+    }
+
+    @Test
+    public void handle_productIsAvailable_shouldAddThatProductToReservation() {
+        addProductCommandHandler.handle(addProductCommand);
+        assertThat(valueCapture.getValue(), is(availableProduct));
+    }
+
+    @Test
+    public void handle_productIsUnavailable_shouldNotAddThatProductToReservation() {
+        when(productRepository.load(any(Id.class))).thenReturn(unavailableProduct);
+
+        addProductCommandHandler.handle(addProductCommand);
+        assertThat(valueCapture.getValue(), not(unavailableProduct));
     }
 }
