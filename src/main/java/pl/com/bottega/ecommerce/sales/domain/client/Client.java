@@ -8,8 +8,10 @@ import pl.com.bottega.ecommerce.sharedkernel.Money;
 
 public class Client extends BaseAggregateRoot{
 private String name;
-	
-	
+
+	public Client() {
+	}
+
 	private PaymentFactory paymentFactory;
 	
 	public ClientData generateSnapshot(){

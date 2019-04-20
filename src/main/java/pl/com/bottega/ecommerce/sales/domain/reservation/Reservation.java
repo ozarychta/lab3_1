@@ -34,8 +34,8 @@ public class Reservation extends BaseAggregateRoot{
 	private Reservation() {
 	}
 
-	Reservation(Id aggregateId, ReservationStatus status,
-			ClientData clientData, Date createDate) {
+	public Reservation(Id aggregateId, ReservationStatus status,
+					   ClientData clientData, Date createDate) {
 		this.id = aggregateId;
 		this.status = status;
 		this.clientData = clientData;
