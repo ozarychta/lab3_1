@@ -24,8 +24,6 @@ public class BookKeeperTest {
     InvoiceRequest invoiceRequest0;
     InvoiceRequest invoiceRequest1;
     InvoiceRequest invoiceRequest2;
-
-    @Mock
     ProductData productData;
 
     @Mock
@@ -33,10 +31,10 @@ public class BookKeeperTest {
 
     @Before
     public void setUp(){
-        bookKeeper = new BookKeeper(new InvoiceFactory());
-
         MockitoAnnotations.initMocks(this);
-        when(productData.getType()).thenReturn(ProductType.STANDARD);
+
+        bookKeeper = new BookKeeper(new InvoiceFactory());
+        productData = new ProductData(Id.generate(), new Money(BigDecimal.ONE),"product", ProductType.STANDARD, new Date());
 
         ClientData clientData = new ClientData(Id.generate(), "client");
         RequestItem item1 = new RequestItem(productData,10, new Money(new BigDecimal(100)));
