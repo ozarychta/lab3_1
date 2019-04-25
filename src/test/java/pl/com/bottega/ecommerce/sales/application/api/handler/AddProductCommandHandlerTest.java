@@ -5,6 +5,7 @@ import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import pl.com.bottega.ecommerce.canonicalmodel.publishedlanguage.ClientData;
 import pl.com.bottega.ecommerce.canonicalmodel.publishedlanguage.Id;
 import pl.com.bottega.ecommerce.sales.application.api.command.AddProductCommand;
 import pl.com.bottega.ecommerce.sales.domain.client.Client;
@@ -12,10 +13,17 @@ import pl.com.bottega.ecommerce.sales.domain.client.ClientRepository;
 import pl.com.bottega.ecommerce.sales.domain.equivalent.SuggestionService;
 import pl.com.bottega.ecommerce.sales.domain.productscatalog.Product;
 import pl.com.bottega.ecommerce.sales.domain.productscatalog.ProductRepository;
+import pl.com.bottega.ecommerce.sales.domain.productscatalog.ProductType;
 import pl.com.bottega.ecommerce.sales.domain.reservation.Reservation;
 import pl.com.bottega.ecommerce.sales.domain.reservation.ReservationRepository;
+import pl.com.bottega.ecommerce.sharedkernel.Money;
 import pl.com.bottega.ecommerce.system.application.SystemContext;
 import pl.com.bottega.ecommerce.system.application.SystemUser;
+
+import java.math.BigDecimal;
+import java.util.Currency;
+import java.util.Date;
+import java.util.Locale;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.not;
@@ -28,7 +36,10 @@ public class AddProductCommandHandlerTest {
     AddProductCommandHandler addProductCommandHandler;
     AddProductCommand addProductCommand;
     Client client;
-    ArgumentCaptor valueCapture;
+    Reservation reservation;
+    SystemContext systemContext;
+    Product availableProduct;
+    Product unavailableProduct;
 
     @Mock
     ReservationRepository reservationRepository;
@@ -42,47 +53,24 @@ public class AddProductCommandHandlerTest {
     @Mock
     ClientRepository clientRepository;
 
-    @Mock
-    SystemContext systemContext;
-
-    @Mock
-    Reservation reservation;
-
-    @Mock
-    Product availableProduct;
-
-    @Mock
-    Product unavailableProduct;
-
-    @Mock
-    SystemUser systemUser;
-
     @Before
     public void setUp() {
         MockitoAnnotations.initMocks(this);
+
+        systemContext = new SystemContext();
+        addProductCommand = new AddProductCommand(Id.generate(), Id.generate(), 10);
+        client = new Client();
+        reservation = new Reservation(Id.generate(), Reservation.ReservationStatus.OPENED, new ClientData(Id.generate(), "client"), new Date());
+        availableProduct = new Product(Id.generate(), new Money(BigDecimal.ONE, Currency.getInstance("EUR")), "availableProduct", ProductType.STANDARD);
+        unavailableProduct = new Product(Id.generate(), new Money(BigDecimal.ONE, Currency.getInstance("EUR")), "unavailableProduct", ProductType.STANDARD);
+        unavailableProduct.markAsRemoved();
         addProductCommandHandler = new AddProductCommandHandler(reservationRepository, productRepository, suggestionService, clientRepository, systemContext);
 
-        addProductCommand = new AddProductCommand(Id.generate(), Id.generate(), 10);
-
         when(reservationRepository.load(any(Id.class))).thenReturn(reservation);
-
-        when(availableProduct.isAvailable()).thenReturn(true);
-        when(unavailableProduct.isAvailable()).thenReturn(false);
         when(productRepository.load(any(Id.class))).thenReturn(availableProduct);
-
-        when(systemUser.getClientId()).thenReturn(Id.generate());
-        when(systemContext.getSystemUser()).thenReturn(systemUser);
-
-        client = new Client();
         when(clientRepository.load(any(Id.class))).thenReturn(client);
-
         when(suggestionService.suggestEquivalent(any(Product.class), any(Client.class))).thenReturn(new Product());
-
         doNothing().when(reservationRepository).save(any(Reservation.class));
-
-        valueCapture = ArgumentCaptor.forClass(Product.class);
-        doNothing().when(reservation).add((Product) valueCapture.capture(), anyInt());
-
     }
 
     @Test
@@ -102,7 +90,7 @@ public class AddProductCommandHandlerTest {
     @Test
     public void handle_productIsAvailable_shouldAddThatProductToReservation() {
         addProductCommandHandler.handle(addProductCommand);
-        assertThat(valueCapture.getValue(), is(availableProduct));
+        assertThat(reservation.contains(availableProduct), is(true));
     }
 
     @Test
@@ -110,6 +98,6 @@ public class AddProductCommandHandlerTest {
         when(productRepository.load(any(Id.class))).thenReturn(unavailableProduct);
 
         addProductCommandHandler.handle(addProductCommand);
-        assertThat(valueCapture.getValue(), not(unavailableProduct));
+        assertThat(reservation.contains(unavailableProduct), is(false));
     }
 }
